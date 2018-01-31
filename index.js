@@ -11,21 +11,20 @@ const oauth2 = simpleOauthModule.create({
     secret: process.env.OAUTH_CLIENT_SECRET
   },
   auth: {
-    // Supply GIT_HOSTNAME for enterprise github installs.
-    tokenHost: process.env.GIT_HOSTNAME || 'https://github.com',
-    tokenPath: process.env.OAUTH_TOKEN_PATH || '/login/oauth/access_token',
-    authorizePath: process.env.OAUTH_AUTHORIZE_PATH || '/login/oauth/authorize'
+    // Supply GIT_HOSTNAME for enterprise gitlab installs.
+    tokenHost: process.env.GIT_HOSTNAME || 'https://gitlab.com',
+    tokenPath: process.env.OAUTH_TOKEN_PATH || '/oauth/token',
+    authorizePath: process.env.OAUTH_AUTHORIZE_PATH || '/oauth/authorize'
   }
 })
 
 // Authorization uri definition
 const authorizationUri = oauth2.authorizationCode.authorizeURL({
   redirect_uri: process.env.REDIRECT_URL,
-  scope: process.env.SCOPES || 'repo,user',
   state: randomstring.generate(32)
 })
 
-// Initial page redirecting to Github
+// Initial page redirecting to GitLab
 app.get('/auth', (req, res) => {
   res.redirect(authorizationUri)
 })
@@ -34,6 +33,7 @@ app.get('/auth', (req, res) => {
 app.get('/callback', (req, res) => {
   const code = req.query.code
   const options = {
+    redirect_uri: process.env.REDIRECT_URL,
     code: code
   }
 
@@ -49,7 +49,7 @@ app.get('/callback', (req, res) => {
       mess = 'success'
       content = {
         token: token.token.access_token,
-        provider: 'github'
+        provider: 'gitlab'
       }
     }
 
@@ -60,14 +60,14 @@ app.get('/callback', (req, res) => {
         console.log("recieveMessage %o", e)
         // send message to main window with da app
         window.opener.postMessage(
-          'authorization:github:${mess}:${JSON.stringify(content)}',
+          'authorization:gitlab:${mess}:${JSON.stringify(content)}',
           e.origin
         )
       }
       window.addEventListener("message", recieveMessage, false)
       // Start handshare with parent
-      console.log("Sending message: %o", "github")
-      window.opener.postMessage("authorizing:github", "*")
+      console.log("Sending message: %o", "gitlab")
+      window.opener.postMessage("authorizing:gitlab", "*")
       })()
     </script>`
     return res.send(script)
@@ -79,7 +79,7 @@ app.get('/success', (req, res) => {
 })
 
 app.get('/', (req, res) => {
-  res.send('Hello<br><a href="/auth">Log in with Github</a>')
+  res.send('Hello<br><a href="/auth">Log in with GitLab</a>')
 })
 
 app.listen(port, () => {
